@@ -14,7 +14,7 @@ type TableHeap struct {
 }
 
 type TableIterator struct {
-	tableHeap     *TableHeap
+	th            *TableHeap
 	currentPageID uint16
 	currentSlotID uint16
 }

@@ -84,7 +84,7 @@ func (th *TableHeap) Delete(rid RID) error {
 
 func (th *TableHeap) Scan() *TableIterator {
 	return &TableIterator{
-		tableHeap:     th,
+		th:            th,
 		currentPageID: th.firstPageID,
 		currentSlotID: 0,
 	}

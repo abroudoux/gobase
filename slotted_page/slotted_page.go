@@ -1,14 +1,13 @@
 package slotted_page
 
 import (
-	"encoding/binary"
 	"errors"
 
 	"gobase/shared"
 )
 
 func (sp *SlottedPage) GetFreeSpace() uint16 {
-	return sp.getFreeSpaceEnd() - (HEADER_SIZE + sp.getNumSlots()*SLOT_SIZE)
+	return sp.getFreeSpaceEnd() - (HEADER_SIZE + sp.GetNumSlots()*SLOT_SIZE)
 }
 
 func (sp *SlottedPage) InsertTuple(tuple shared.Tuple) (slotID uint16, err error) {
@@ -20,17 +19,17 @@ func (sp *SlottedPage) InsertTuple(tuple shared.Tuple) (slotID uint16, err error
 	newTupleOffset := sp.getFreeSpaceEnd() - uint16(len(tuple))
 	copy(sp.data[newTupleOffset:], tuple)
 
-	slotID = sp.getNumSlots()
+	slotID = sp.GetNumSlots()
 
 	sp.setSlot(slotID, newTupleOffset, uint16(len(tuple)))
-	sp.setNumSlots(sp.getNumSlots() + 1)
+	sp.setNumSlots(sp.GetNumSlots() + 1)
 	sp.setFreeSpaceEnd(newTupleOffset)
 
 	return slotID, nil
 }
 
 func (sp *SlottedPage) GetTuple(slotID uint16) (shared.Tuple, error) {
-	if slotID >= sp.getNumSlots() {
+	if slotID >= sp.GetNumSlots() {
 		return nil, errors.New("slot didn't exists")
 	}
 
@@ -46,7 +45,7 @@ func (sp *SlottedPage) GetTuple(slotID uint16) (shared.Tuple, error) {
 }
 
 func (sp *SlottedPage) DeleteTuple(slotID uint16) error {
-	if slotID >= sp.getNumSlots() {
+	if slotID >= sp.GetNumSlots() {
 		return errors.New("slot didn't exists")
 	}
 
@@ -58,17 +57,4 @@ func (sp *SlottedPage) DeleteTuple(slotID uint16) error {
 	sp.setSlot(slotID, offset, 0)
 
 	return nil
-}
-
-func FromData(data []byte) *SlottedPage {
-	return &SlottedPage{data: data}
-}
-
-func (sp *SlottedPage) GetData() []byte {
-	return sp.data
-}
-
-func InitSlottedPage(data []byte) {
-	binary.LittleEndian.PutUint16(data[NUM_SLOTS_OFFSET:], 0)
-	binary.LittleEndian.PutUint16(data[FREE_SPACE_END_OFFSET:], uint16(shared.PAGE_SIZE))
 }

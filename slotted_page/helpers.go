@@ -1,8 +1,11 @@
 package slotted_page
 
-import "encoding/binary"
+import (
+	"encoding/binary"
+	"gobase/shared"
+)
 
-func (sp *SlottedPage) getNumSlots() uint16 {
+func (sp *SlottedPage) GetNumSlots() uint16 {
 	return binary.LittleEndian.Uint16(sp.data[NUM_SLOTS_OFFSET:])
 }
 
@@ -13,7 +16,6 @@ func (sp *SlottedPage) setNumSlots(n uint16) {
 func (sp *SlottedPage) getFreeSpaceEnd() uint16 {
 	return binary.LittleEndian.Uint16(sp.data[FREE_SPACE_END_OFFSET:])
 }
-
 func (sp *SlottedPage) setFreeSpaceEnd(offset uint16) {
 	binary.LittleEndian.PutUint16(sp.data[FREE_SPACE_END_OFFSET:], offset)
 }
@@ -29,4 +31,17 @@ func (sp *SlottedPage) setSlot(slotID uint16, offset uint16, length uint16) {
 	slotPos := HEADER_SIZE + slotID*SLOT_SIZE
 	binary.LittleEndian.PutUint16(sp.data[slotPos:], offset)
 	binary.LittleEndian.PutUint16(sp.data[slotPos+2:], length)
+}
+
+func FromData(data []byte) *SlottedPage {
+	return &SlottedPage{data: data}
+}
+
+func (sp *SlottedPage) GetData() []byte {
+	return sp.data
+}
+
+func InitSlottedPage(data []byte) {
+	binary.LittleEndian.PutUint16(data[NUM_SLOTS_OFFSET:], 0)
+	binary.LittleEndian.PutUint16(data[FREE_SPACE_END_OFFSET:], uint16(shared.PAGE_SIZE))
 }
