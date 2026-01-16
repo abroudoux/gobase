@@ -2,37 +2,37 @@ package buffer_pool_manager
 
 import "gobase/disk_manager"
 
-type Page struct {
-	ID       uint32
+type Frame struct {
+	PageID   uint32
 	Data     []byte
 	Dirty    bool
 	PinCount int
 }
 
-func NewPage(id uint32, data []byte) *Page {
-	return &Page{
-		ID:       id,
+type BufferPoolManager struct {
+	frames     []*Frame
+	pageTable map[uint32]int
+	dm         *disk_manager.DiskManager
+	poolSize   int
+}
+
+func NewFrame(pageID uint32, data []byte) *Frame {
+	return &Frame{
+		PageID:   pageID,
 		Data:     data,
 		Dirty:    false,
 		PinCount: 1,
 	}
 }
 
-type BufferPoolManager struct {
-	pages     []*Page
-	pageTable map[uint32]int
-	dm        *disk_manager.DiskManager
-	poolSize  int
-}
-
 func NewBufferPoolManager(dm *disk_manager.DiskManager, poolSize int) *BufferPoolManager {
-	pages := make([]*Page, poolSize)
+	frames := make([]*Frame, poolSize)
 	pageTable := make(map[uint32]int)
 
 	return &BufferPoolManager{
-		pages:     pages,
+		frames:     frames,
 		pageTable: pageTable,
-		dm:        dm,
-		poolSize:  poolSize,
+		dm:         dm,
+		poolSize:   poolSize,
 	}
 }

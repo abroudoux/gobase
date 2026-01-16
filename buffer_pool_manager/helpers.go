@@ -3,14 +3,14 @@ package buffer_pool_manager
 import "errors"
 
 func (bpm *BufferPoolManager) findFreeFrame() (int, error) {
-	for i, p := range bpm.pages {
-		if p == nil {
+	for i, f := range bpm.frames {
+		if f == nil {
 			return i, nil
 		}
 	}
 
-	for i, p := range bpm.pages {
-		if p.PinCount == 0 {
+	for i, f := range bpm.frames {
+		if f.PinCount == 0 {
 			return i, nil
 		}
 	}
@@ -18,19 +18,19 @@ func (bpm *BufferPoolManager) findFreeFrame() (int, error) {
 	return 0, errors.New("buffer pool full")
 }
 
-func (bpm *BufferPoolManager) evictPage(frameIndex int) error {
-	oldPage := bpm.pages[frameIndex]
-	if oldPage == nil {
+func (bpm *BufferPoolManager) evictFrame(frameIndex int) error {
+	oldFrame := bpm.frames[frameIndex]
+	if oldFrame == nil {
 		return nil
 	}
 
-	if oldPage.Dirty {
-		err := bpm.dm.WritePage(oldPage.ID, oldPage.Data)
+	if oldFrame.Dirty {
+		err := bpm.dm.WritePage(oldFrame.PageID, oldFrame.Data)
 		if err != nil {
 			return err
 		}
 	}
 
-	delete(bpm.pageTable, oldPage.ID)
+	delete(bpm.pageTable, oldFrame.PageID)
 	return nil
 }

@@ -2,10 +2,10 @@ package buffer_pool_manager
 
 import "errors"
 
-func (bpm *BufferPoolManager) FetchPage(pageID uint32) (*Page, error) {
+func (bpm *BufferPoolManager) FetchPage(pageID uint32) (*Frame, error) {
 	if index, exists := bpm.pageTable[pageID]; exists {
-		bpm.pages[index].PinCount++
-		return bpm.pages[index], nil
+		bpm.frames[index].PinCount++
+		return bpm.frames[index], nil
 	}
 
 	frameIndex, err := bpm.findFreeFrame()
@@ -13,7 +13,7 @@ func (bpm *BufferPoolManager) FetchPage(pageID uint32) (*Page, error) {
 		return nil, err
 	}
 
-	err = bpm.evictPage(frameIndex)
+	err = bpm.evictFrame(frameIndex)
 	if err != nil {
 		return nil, err
 	}
@@ -23,23 +23,23 @@ func (bpm *BufferPoolManager) FetchPage(pageID uint32) (*Page, error) {
 		return nil, err
 	}
 
-	newPage := NewPage(pageID, data)
+	newFrame := NewFrame(pageID, data)
 
-	bpm.pages[frameIndex] = newPage
+	bpm.frames[frameIndex] = newFrame
 	bpm.pageTable[pageID] = frameIndex
 
-	return newPage, nil
+	return newFrame, nil
 }
 
 func (bpm *BufferPoolManager) UnpinPage(pageID uint32, isDirty bool) error {
 	if index, exists := bpm.pageTable[pageID]; exists {
-		pageFound := bpm.pages[index]
+		frame := bpm.frames[index]
 
-		if pageFound.PinCount > 0 {
-			pageFound.PinCount--
+		if frame.PinCount > 0 {
+			frame.PinCount--
 		}
 		if isDirty {
-			pageFound.Dirty = true
+			frame.Dirty = true
 		}
 
 		return nil
@@ -50,20 +50,20 @@ func (bpm *BufferPoolManager) UnpinPage(pageID uint32, isDirty bool) error {
 
 func (bpm *BufferPoolManager) FlushPage(pageID uint32) error {
 	if index, exists := bpm.pageTable[pageID]; exists {
-		err := bpm.dm.WritePage(bpm.pages[index].ID, bpm.pages[index].Data)
+		err := bpm.dm.WritePage(bpm.frames[index].PageID, bpm.frames[index].Data)
 		if err != nil {
 			return err
 		}
 
-		bpm.pages[index].Dirty = false
+		bpm.frames[index].Dirty = false
 		return nil
 	}
 
 	return errors.New("page not found")
 }
 
-func (bpm *BufferPoolManager) NewPage() (uint32, *Page, error) {
-	newPageId, err := bpm.dm.AllocatePage()
+func (bpm *BufferPoolManager) NewPage() (newPageID uint32, newFrame *Frame, err error) {
+	newPageID, err = bpm.dm.AllocatePage()
 	if err != nil {
 		return 0, nil, err
 	}
@@ -73,14 +73,14 @@ func (bpm *BufferPoolManager) NewPage() (uint32, *Page, error) {
 		return 0, nil, err
 	}
 
-	err = bpm.evictPage(frameIndex)
+	err = bpm.evictFrame(frameIndex)
 	if err != nil {
 		return 0, nil, err
 	}
 
-	newPage := NewPage(newPageId, make([]byte, bpm.dm.PageSize))
-	bpm.pageTable[newPage.ID] = frameIndex
-	bpm.pages[frameIndex] = newPage
+	newFrame = NewFrame(newPageID, make([]byte, bpm.dm.PageSize))
+	bpm.pageTable[newFrame.PageID] = frameIndex
+	bpm.frames[frameIndex] = newFrame
 
-	return newPage.ID, newPage, nil
+	return newPageID, newFrame, nil
 }

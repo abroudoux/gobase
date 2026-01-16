@@ -30,11 +30,3 @@ func (sp *SlottedPage) setSlot(slotID uint16, offset uint16, length uint16) {
 	binary.LittleEndian.PutUint16(sp.data[slotPos:], offset)
 	binary.LittleEndian.PutUint16(sp.data[slotPos+2:], length)
 }
-
-func FromData(data []byte) *SlottedPage {
-	return &SlottedPage{data: data}
-}
-
-func (sp *SlottedPage) GetData() []byte {
-	return sp.data
-}

@@ -106,7 +106,7 @@ func testSlottedPageStandalone() {
 	fmt.Printf("1. SlottedPage créée, espace libre: %d octets\n", sp.GetFreeSpace())
 
 	// Insérer des tuples
-	tuple1 := []byte("Alice,30,Paris")
+	tuple1 := shared.NewTuple("Alice,30,Paris")
 	slotID1, err := sp.InsertTuple(tuple1)
 	if err != nil {
 		fmt.Printf("ERREUR InsertTuple: %v\n", err)
@@ -114,7 +114,7 @@ func testSlottedPageStandalone() {
 	}
 	fmt.Printf("2. Tuple 1 inséré au slot %d: %s\n", slotID1, string(tuple1))
 
-	tuple2 := []byte("Bob,25,Lyon")
+	tuple2 := shared.NewTuple("Bob,25,Lyon")
 	slotID2, err := sp.InsertTuple(tuple2)
 	if err != nil {
 		fmt.Printf("ERREUR InsertTuple: %v\n", err)
@@ -169,9 +169,9 @@ func testIntegration() {
 	initSlottedPage(page.Data)
 
 	// Insérer des tuples
-	sp.InsertTuple([]byte("User1,Alice,30"))
-	sp.InsertTuple([]byte("User2,Bob,25"))
-	sp.InsertTuple([]byte("User3,Charlie,35"))
+	sp.InsertTuple(shared.NewTuple("User1,Alice,30"))
+	sp.InsertTuple(shared.NewTuple("User2,Bob,25"))
+	sp.InsertTuple(shared.NewTuple("User3,Charlie,35"))
 	fmt.Println("2. 3 tuples insérés dans la page")
 
 	// Marquer comme dirty et flush

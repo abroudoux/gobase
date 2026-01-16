@@ -4,7 +4,7 @@ import (
 	"errors"
 )
 
-func (dm *DiskManager) ReadPage(pageID uint32) ([]byte, error) {
+func (dm *DiskManager) ReadPage(pageID uint32) (pageData []byte, err error) {
 	if pageID >= dm.NumPages {
 		return nil, errors.New("page does not exist")
 	}
@@ -43,13 +43,13 @@ func (dm *DiskManager) WritePage(pageID uint32, data []byte) error {
 	return dm.File.Sync()
 }
 
-func (dm *DiskManager) AllocatePage() (uint32, error) {
+func (dm *DiskManager) AllocatePage() (newPageID uint32, err error) {
 	newPageId := dm.NumPages
 
 	offset := calculateOffset(dm.NumPages, dm.PageSize)
 
 	emptyPage := make([]byte, dm.PageSize)
-	_, err := dm.File.WriteAt(emptyPage, offset)
+	_, err = dm.File.WriteAt(emptyPage, offset)
 	if err != nil {
 		return 0, errors.New("error creating new page")
 	}
