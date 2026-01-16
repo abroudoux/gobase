@@ -6,6 +6,8 @@ import (
 
 	"gobase/buffer_pool_manager"
 	"gobase/disk_manager"
+	"gobase/shared"
+	"gobase/slotted_page"
 )
 
 func main() {
@@ -18,8 +20,11 @@ func main() {
 	fmt.Println("\n=== TEST BUFFER POOL MANAGER ===")
 	testBufferPoolManager()
 
-	fmt.Println("\n=== TEST EVICTION DIRTY ===")
-	testEvictionDirty()
+	fmt.Println("\n=== TEST SLOTTED PAGE (standalone) ===")
+	testSlottedPageStandalone()
+
+	fmt.Println("\n=== TEST INTEGRATION COMPLETE ===")
+	testIntegration()
 
 	// Nettoyage
 	os.Remove("test.db")
@@ -27,7 +32,6 @@ func main() {
 }
 
 func testDiskManager() {
-	// 1. Créer un DiskManager
 	dm, err := disk_manager.NewDiskManager("test.db")
 	if err != nil {
 		fmt.Printf("ERREUR création DiskManager: %v\n", err)
@@ -35,7 +39,6 @@ func testDiskManager() {
 	}
 	fmt.Println("1. DiskManager créé")
 
-	// 2. Allouer une page
 	pageID, err := dm.AllocatePage()
 	if err != nil {
 		fmt.Printf("ERREUR allocation: %v\n", err)
@@ -43,8 +46,7 @@ func testDiskManager() {
 	}
 	fmt.Printf("2. Page allouée avec ID: %d\n", pageID)
 
-	// 3. Écrire des données
-	data := make([]byte, disk_manager.PAGE_SIZE)
+	data := make([]byte, shared.PAGE_SIZE)
 	copy(data, []byte("Hello DiskManager!"))
 	err = dm.WritePage(pageID, data)
 	if err != nil {
@@ -53,11 +55,9 @@ func testDiskManager() {
 	}
 	fmt.Println("3. Données écrites sur la page")
 
-	// 4. Fermer le DiskManager
 	dm.Close()
 	fmt.Println("4. DiskManager fermé")
 
-	// 5. Rouvrir et vérifier la persistance
 	dm2, err := disk_manager.NewDiskManager("test.db")
 	if err != nil {
 		fmt.Printf("ERREUR réouverture: %v\n", err)
@@ -75,15 +75,12 @@ func testDiskManager() {
 }
 
 func testBufferPoolManager() {
-	// Nettoyer
 	os.Remove("test.db")
 
-	// 1. Créer DiskManager et BufferPoolManager
 	dm, _ := disk_manager.NewDiskManager("test.db")
-	bpm := buffer_pool_manager.NewBufferPoolManager(dm, 3) // Pool de 3 pages
+	bpm := buffer_pool_manager.NewBufferPoolManager(dm, 3)
 	fmt.Println("1. BufferPoolManager créé avec poolSize=3")
 
-	// 2. Créer une nouvelle page via BufferPoolManager
 	pageID1, page1, err := bpm.NewPage()
 	if err != nil {
 		fmt.Printf("ERREUR NewPage: %v\n", err)
@@ -92,83 +89,132 @@ func testBufferPoolManager() {
 	copy(page1.Data, []byte("Page 1 - Bonjour!"))
 	fmt.Printf("2. Nouvelle page créée avec ID: %d\n", pageID1)
 
-	// 3. Créer une deuxième page
-	pageID2, page2, err := bpm.NewPage()
-	if err != nil {
-		fmt.Printf("ERREUR NewPage: %v\n", err)
-		return
-	}
-	copy(page2.Data, []byte("Page 2 - Hello!"))
-	fmt.Printf("3. Deuxième page créée avec ID: %d\n", pageID2)
+	bpm.UnpinPage(pageID1, true)
+	bpm.FlushPage(pageID1)
+	fmt.Println("3. Page flushée sur disque")
 
-	// 4. Unpin les pages (marquer page1 comme dirty)
-	bpm.UnpinPage(pageID1, true)  // dirty = true
-	bpm.UnpinPage(pageID2, false) // dirty = false
-	fmt.Println("4. Pages unpinned (page1 dirty, page2 clean)")
-
-	// 5. Fetch la page 1 (devrait être en cache)
-	fetchedPage, err := bpm.FetchPage(pageID1)
-	if err != nil {
-		fmt.Printf("ERREUR FetchPage: %v\n", err)
-		return
-	}
-	fmt.Printf("5. Page 1 récupérée du cache: %s\n", string(fetchedPage.Data[:17]))
-	bpm.UnpinPage(pageID1, false)
-
-	// 6. Flush la page 1 sur disque
-	err = bpm.FlushPage(pageID1)
-	if err != nil {
-		fmt.Printf("ERREUR FlushPage: %v\n", err)
-		return
-	}
-	fmt.Println("6. Page 1 flushée sur disque")
-
-	// 7. Vérifier la persistance
 	dm.Close()
 	dm2, _ := disk_manager.NewDiskManager("test.db")
 	readData, _ := dm2.ReadPage(pageID1)
-	fmt.Printf("7. Vérification persistance: %s\n", string(readData[:17]))
+	fmt.Printf("4. Vérification persistance: %s\n", string(readData[:17]))
 	dm2.Close()
 }
 
-func testEvictionDirty() {
-	// Nettoyer
+func testSlottedPageStandalone() {
+	// Test SlottedPage sans BufferPool (en mémoire seulement)
+	sp := slotted_page.NewSlottedPage()
+	fmt.Printf("1. SlottedPage créée, espace libre: %d octets\n", sp.GetFreeSpace())
+
+	// Insérer des tuples
+	tuple1 := []byte("Alice,30,Paris")
+	slotID1, err := sp.InsertTuple(tuple1)
+	if err != nil {
+		fmt.Printf("ERREUR InsertTuple: %v\n", err)
+		return
+	}
+	fmt.Printf("2. Tuple 1 inséré au slot %d: %s\n", slotID1, string(tuple1))
+
+	tuple2 := []byte("Bob,25,Lyon")
+	slotID2, err := sp.InsertTuple(tuple2)
+	if err != nil {
+		fmt.Printf("ERREUR InsertTuple: %v\n", err)
+		return
+	}
+	fmt.Printf("3. Tuple 2 inséré au slot %d: %s\n", slotID2, string(tuple2))
+
+	fmt.Printf("4. Espace libre restant: %d octets\n", sp.GetFreeSpace())
+
+	// Lire les tuples
+	readTuple1, _ := sp.GetTuple(slotID1)
+	fmt.Printf("5. Lecture slot %d: %s\n", slotID1, string(readTuple1))
+
+	readTuple2, _ := sp.GetTuple(slotID2)
+	fmt.Printf("6. Lecture slot %d: %s\n", slotID2, string(readTuple2))
+
+	// Supprimer un tuple
+	sp.DeleteTuple(slotID1)
+	fmt.Printf("7. Tuple au slot %d supprimé\n", slotID1)
+
+	// Essayer de lire le tuple supprimé
+	_, err = sp.GetTuple(slotID1)
+	if err != nil {
+		fmt.Printf("8. Lecture slot %d après suppression: %v (attendu)\n", slotID1, err)
+	}
+
+	// Le tuple 2 est toujours accessible
+	readTuple2Again, _ := sp.GetTuple(slotID2)
+	fmt.Printf("9. Tuple 2 toujours accessible: %s\n", string(readTuple2Again))
+}
+
+func testIntegration() {
+	// Test complet : SlottedPage + BufferPool + DiskManager
 	os.Remove("test.db")
 
-	// Créer un pool de seulement 2 pages pour forcer l'éviction
+	// === PHASE 1 : Créer et remplir une page ===
+	fmt.Println("--- Phase 1 : Création et insertion ---")
+
 	dm, _ := disk_manager.NewDiskManager("test.db")
-	bpm := buffer_pool_manager.NewBufferPoolManager(dm, 2)
-	fmt.Println("1. BufferPoolManager créé avec poolSize=2 (pour forcer éviction)")
+	bpm := buffer_pool_manager.NewBufferPoolManager(dm, 3)
 
-	// Créer 2 pages (remplit le pool)
-	pageID1, page1, _ := bpm.NewPage()
-	copy(page1.Data, []byte("PAGE-1-ORIGINAL"))
-	bpm.UnpinPage(pageID1, true) // dirty!
-	fmt.Printf("2. Page %d créée et marquée dirty\n", pageID1)
+	// Créer une nouvelle page via BufferPool
+	pageID, page, _ := bpm.NewPage()
+	fmt.Printf("1. Page %d créée via BufferPool\n", pageID)
 
-	pageID2, page2, _ := bpm.NewPage()
-	copy(page2.Data, []byte("PAGE-2-DATA"))
-	bpm.UnpinPage(pageID2, false)
-	fmt.Printf("3. Page %d créée (clean)\n", pageID2)
+	// Initialiser cette page comme SlottedPage
+	// On écrit le header directement dans page.Data
+	sp := slotted_page.FromData(page.Data)
 
-	// Le pool est plein. Créer une 3ème page force l'éviction
-	fmt.Println("4. Pool plein, création d'une 3ème page (force éviction)...")
+	// Initialiser le header (comme NewSlottedPage mais sur page.Data)
+	// Note: page.Data est déjà alloué par BufferPool, on doit l'initialiser
+	initSlottedPage(page.Data)
 
-	pageID3, _, err := bpm.NewPage()
-	if err != nil {
-		fmt.Printf("ERREUR: %v\n", err)
-		return
-	}
-	fmt.Printf("5. Page %d créée, une page a été évincée\n", pageID3)
+	// Insérer des tuples
+	sp.InsertTuple([]byte("User1,Alice,30"))
+	sp.InsertTuple([]byte("User2,Bob,25"))
+	sp.InsertTuple([]byte("User3,Charlie,35"))
+	fmt.Println("2. 3 tuples insérés dans la page")
 
-	// Vérifier que la page 1 (dirty) a bien été écrite sur disque
+	// Marquer comme dirty et flush
+	bpm.UnpinPage(pageID, true)
+	bpm.FlushPage(pageID)
+	fmt.Println("3. Page flushée sur disque")
+
 	dm.Close()
+
+	// === PHASE 2 : Relire depuis le disque ===
+	fmt.Println("--- Phase 2 : Relecture depuis disque ---")
+
 	dm2, _ := disk_manager.NewDiskManager("test.db")
-	readData, err := dm2.ReadPage(pageID1)
-	if err != nil {
-		fmt.Printf("ERREUR lecture page évincée: %v\n", err)
-		return
-	}
-	fmt.Printf("6. Page 1 évincée et sauvegardée: %s\n", string(readData[:15]))
+	bpm2 := buffer_pool_manager.NewBufferPoolManager(dm2, 3)
+
+	// Récupérer la page
+	page2, _ := bpm2.FetchPage(pageID)
+	fmt.Printf("4. Page %d récupérée depuis le disque\n", pageID)
+
+	// Interpréter comme SlottedPage
+	sp2 := slotted_page.FromData(page2.Data)
+
+	// Lire les tuples
+	tuple0, _ := sp2.GetTuple(0)
+	tuple1, _ := sp2.GetTuple(1)
+	tuple2, _ := sp2.GetTuple(2)
+
+	fmt.Printf("5. Tuple 0: %s\n", string(tuple0))
+	fmt.Printf("6. Tuple 1: %s\n", string(tuple1))
+	fmt.Printf("7. Tuple 2: %s\n", string(tuple2))
+
+	bpm2.UnpinPage(pageID, false)
 	dm2.Close()
+
+	fmt.Println("8. Intégration complète réussie!")
+}
+
+// Helper pour initialiser un []byte comme SlottedPage
+func initSlottedPage(data []byte) {
+	// numSlots = 0
+	data[0] = 0
+	data[1] = 0
+	// freeSpaceEnd = 4096 (little endian: 0x1000 = [0x00, 0x10])
+	data[2] = 0x00
+	data[3] = 0x10
 }

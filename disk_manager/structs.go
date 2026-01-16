@@ -3,6 +3,8 @@ package disk_manager
 import (
 	"errors"
 	"os"
+
+	"gobase/shared"
 )
 
 type DiskManager struct {
@@ -23,11 +25,11 @@ func NewDiskManager(filePath string) (*DiskManager, error) {
 		return nil, errors.New("error during file stats reading")
 	}
 
-	numPages := fileSize.Size() / int64(PAGE_SIZE)
+	numPages := fileSize.Size() / int64(shared.PAGE_SIZE)
 
 	newDiskManager := &DiskManager{
 		File:     file,
-		PageSize: PAGE_SIZE,
+		PageSize: shared.PAGE_SIZE,
 		NumPages: uint32(numPages),
 	}
 
