@@ -25,3 +25,20 @@ func NewRID(pageID, slotID uint16) *RID {
 		slotID: slotID,
 	}
 }
+
+func NewTableHeap(bpm *buffer_pool_manager.BufferPoolManager) (*TableHeap, error) {
+	pageID, frame, err := bpm.NewPage()
+	if err != nil {
+		return nil, err
+	}
+
+	initSlottedPageHeader(frame.Data)
+
+	bpm.UnpinPage(pageID, true)
+
+	return &TableHeap{
+		bpm:         bpm,
+		firstPageID: uint16(pageID),
+		lastPageID:  uint16(pageID),
+	}, nil
+}

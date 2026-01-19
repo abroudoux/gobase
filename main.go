@@ -5,9 +5,12 @@ import (
 	"os"
 
 	"gobase/buffer_pool_manager"
+	"gobase/catalog"
 	"gobase/disk_manager"
 	"gobase/shared"
 	"gobase/slotted_page"
+	"gobase/table"
+	"gobase/table_heap"
 )
 
 func main() {
@@ -25,6 +28,12 @@ func main() {
 
 	fmt.Println("\n=== TEST INTEGRATION COMPLETE ===")
 	testIntegration()
+
+	fmt.Println("\n=== TEST CATALOG (Schema + Encoder/Decoder) ===")
+	testCatalog()
+
+	fmt.Println("\n=== TEST TABLE ===")
+	testTable()
 
 	// Nettoyage
 	os.Remove("test.db")
@@ -217,4 +226,137 @@ func initSlottedPage(data []byte) {
 	// freeSpaceEnd = 4096 (little endian: 0x1000 = [0x00, 0x10])
 	data[2] = 0x00
 	data[3] = 0x10
+}
+
+func testCatalog() {
+	// 1. Créer un schema
+	schema := catalog.NewSchema([]catalog.Column{
+		{Name: "id", Type: catalog.TypeInt},
+		{Name: "name", Type: catalog.TypeVarchar, Size: 50},
+		{Name: "age", Type: catalog.TypeSmallInt},
+		{Name: "active", Type: catalog.TypeBoolean},
+	})
+	fmt.Println("1. Schema créé avec 4 colonnes: id(INT), name(VARCHAR), age(SMALLINT), active(BOOL)")
+
+	// 2. Tester GetColumnIndex
+	idx, err := schema.GetColumnIndex("age")
+	if err != nil {
+		fmt.Printf("ERREUR GetColumnIndex: %v\n", err)
+		return
+	}
+	fmt.Printf("2. Index de la colonne 'age': %d\n", idx)
+
+	// 3. Encoder un tuple
+	values := []any{1, "Alice", 30, true}
+	encoded := catalog.EncodeTuple(schema, values)
+	fmt.Printf("3. Tuple encodé: %v (%d bytes)\n", encoded, len(encoded))
+
+	// 4. Décoder le tuple
+	decoded := catalog.DecodeTuple(schema, encoded)
+	fmt.Printf("4. Tuple décodé: id=%v, name=%v, age=%v, active=%v\n",
+		decoded[0], decoded[1], decoded[2], decoded[3])
+
+	// 5. Vérifier que les valeurs sont identiques
+	if decoded[0] == 1 && decoded[1] == "Alice" && decoded[2] == 30 && decoded[3] == true {
+		fmt.Println("5. Encode/Decode OK: valeurs identiques!")
+	} else {
+		fmt.Println("5. ERREUR: valeurs différentes après decode")
+	}
+}
+
+func testTable() {
+	os.Remove("test.db")
+
+	// 1. Setup: DiskManager + BufferPoolManager + TableHeap
+	dm, err := disk_manager.NewDiskManager("test.db")
+	if err != nil {
+		fmt.Printf("ERREUR DiskManager: %v\n", err)
+		return
+	}
+	bpm := buffer_pool_manager.NewBufferPoolManager(dm, 5)
+
+	heap, err := table_heap.NewTableHeap(bpm)
+	if err != nil {
+		fmt.Printf("ERREUR TableHeap: %v\n", err)
+		return
+	}
+	fmt.Println("1. Infrastructure créée (DiskManager + BufferPool + TableHeap)")
+
+	// 2. Créer un schema
+	schema := catalog.NewSchema([]catalog.Column{
+		{Name: "id", Type: catalog.TypeInt},
+		{Name: "name", Type: catalog.TypeVarchar, Size: 50},
+		{Name: "age", Type: catalog.TypeSmallInt},
+	})
+
+	// 3. Créer la table
+	usersTable := table.NewTable("users", schema, heap)
+	fmt.Println("2. Table 'users' créée avec schema (id, name, age)")
+
+	// 4. Insérer des données
+	rid1, err := usersTable.Insert(1, "Alice", 30)
+	if err != nil {
+		fmt.Printf("ERREUR Insert: %v\n", err)
+		return
+	}
+	fmt.Printf("3. Inséré: (1, 'Alice', 30) → RID(%d, %d)\n", rid1.GetPageID(), rid1.GetSlotID())
+
+	rid2, err := usersTable.Insert(2, "Bob", 25)
+	if err != nil {
+		fmt.Printf("ERREUR Insert: %v\n", err)
+		return
+	}
+	fmt.Printf("4. Inséré: (2, 'Bob', 25) → RID(%d, %d)\n", rid2.GetPageID(), rid2.GetSlotID())
+
+	rid3, err := usersTable.Insert(3, "Charlie", 35)
+	if err != nil {
+		fmt.Printf("ERREUR Insert: %v\n", err)
+		return
+	}
+	fmt.Printf("5. Inséré: (3, 'Charlie', 35) → RID(%d, %d)\n", rid3.GetPageID(), rid3.GetSlotID())
+
+	// 5. Lire par RID
+	row, err := usersTable.GetByRID(*rid2)
+	if err != nil {
+		fmt.Printf("ERREUR GetByRID: %v\n", err)
+		return
+	}
+	fmt.Printf("6. GetByRID(rid2): id=%v, name=%v, age=%v\n", row[0], row[1], row[2])
+
+	// 6. Scanner toute la table
+	fmt.Println("7. Scan de la table:")
+	scanner := usersTable.Scan()
+	count := 0
+	for {
+		values, ok := scanner.Next()
+		if !ok {
+			break
+		}
+		count++
+		fmt.Printf("   - Row %d: id=%v, name=%v, age=%v\n", count, values[0], values[1], values[2])
+	}
+
+	// 7. Supprimer une ligne
+	err = usersTable.Delete(*rid2)
+	if err != nil {
+		fmt.Printf("ERREUR Delete: %v\n", err)
+		return
+	}
+	fmt.Println("8. Supprimé: rid2 (Bob)")
+
+	// 8. Re-scanner pour vérifier la suppression
+	fmt.Println("9. Scan après suppression:")
+	scanner2 := usersTable.Scan()
+	count = 0
+	for {
+		values, ok := scanner2.Next()
+		if !ok {
+			break
+		}
+		count++
+		fmt.Printf("   - Row %d: id=%v, name=%v, age=%v\n", count, values[0], values[1], values[2])
+	}
+
+	dm.Close()
+	fmt.Println("10. Test Table terminé!")
 }
