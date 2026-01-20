@@ -1,7 +1,5 @@
 package buffer_pool_manager
 
-import "errors"
-
 func (bpm *BufferPoolManager) FetchPage(pageID uint32) (*Frame, error) {
 	if index, exists := bpm.pageTable[pageID]; exists {
 		bpm.frames[index].PinCount++
@@ -45,7 +43,7 @@ func (bpm *BufferPoolManager) UnpinPage(pageID uint32, isDirty bool) error {
 		return nil
 	}
 
-	return errors.New("page not found")
+	return ErrPageNotFound
 }
 
 func (bpm *BufferPoolManager) FlushPage(pageID uint32) error {
@@ -59,7 +57,7 @@ func (bpm *BufferPoolManager) FlushPage(pageID uint32) error {
 		return nil
 	}
 
-	return errors.New("page not found")
+	return ErrPageNotFound
 }
 
 func (bpm *BufferPoolManager) NewPage() (newPageID uint32, newFrame *Frame, err error) {

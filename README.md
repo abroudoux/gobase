@@ -1,6 +1,6 @@
 # gobase
 
-Naive & minimalist relational databse - Learning purpose
+Naive & minimalist relational database - Learning purpose
 
 ## Todo
 

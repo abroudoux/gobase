@@ -1,7 +1,5 @@
 package buffer_pool_manager
 
-import "errors"
-
 func (bpm *BufferPoolManager) findFreeFrame() (int, error) {
 	for i, f := range bpm.frames {
 		if f == nil {
@@ -15,7 +13,7 @@ func (bpm *BufferPoolManager) findFreeFrame() (int, error) {
 		}
 	}
 
-	return 0, errors.New("buffer pool full")
+	return 0, ErrBufferPoolFull
 }
 
 func (bpm *BufferPoolManager) evictFrame(frameIndex int) error {
