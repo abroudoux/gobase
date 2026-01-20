@@ -1,12 +1,8 @@
 package disk_manager
 
-import (
-	"errors"
-)
-
 func (dm *DiskManager) ReadPage(pageID uint32) (pageData []byte, err error) {
 	if pageID >= dm.NumPages {
-		return nil, errors.New("page does not exist")
+		return nil, ErrPageDoesNotExist
 	}
 
 	offset := calculateOffset(pageID, dm.PageSize)
@@ -18,7 +14,7 @@ func (dm *DiskManager) ReadPage(pageID uint32) (pageData []byte, err error) {
 	}
 
 	if uint32(n) != dm.PageSize {
-		return nil, errors.New("incomplete read")
+		return nil, ErrIncompleteRead
 	}
 
 	return data, nil
@@ -26,38 +22,38 @@ func (dm *DiskManager) ReadPage(pageID uint32) (pageData []byte, err error) {
 
 func (dm *DiskManager) WritePage(pageID uint32, data []byte) error {
 	if pageID >= dm.NumPages {
-		return errors.New("page does not exist")
+		return ErrPageDoesNotExist
 	}
 
 	if uint32(len(data)) != dm.PageSize {
-		return errors.New("data size does not match page size")
+		return ErrInvalidPageDataSize
 	}
 
 	offset := calculateOffset(pageID, dm.PageSize)
 
 	_, err := dm.File.WriteAt(data, offset)
 	if err != nil {
-		return errors.New("error writing data")
+		return ErrWriteFailed
 	}
 
 	return dm.File.Sync()
 }
 
 func (dm *DiskManager) AllocatePage() (newPageID uint32, err error) {
-	newPageId := dm.NumPages
+	newPageID = dm.NumPages
 
 	offset := calculateOffset(dm.NumPages, dm.PageSize)
 
 	emptyPage := make([]byte, dm.PageSize)
 	_, err = dm.File.WriteAt(emptyPage, offset)
 	if err != nil {
-		return 0, errors.New("error creating new page")
+		return 0, ErrAllocatePageFailed
 	}
 
 	dm.File.Sync()
 	dm.NumPages += 1
 
-	return newPageId, nil
+	return newPageID, nil
 }
 
 func (dm *DiskManager) Close() error {
