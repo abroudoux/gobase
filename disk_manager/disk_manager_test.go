@@ -28,6 +28,7 @@ func newTestDiskManager(t *testing.T, numPages uint32) (*DiskManager, func()) {
 
 func TestReadPage(t *testing.T) {
 	initialData := []byte("ABCDEFGH")
+
 	dm, cleanup := newTestDiskManager(t, 1)
 	defer cleanup()
 
@@ -41,6 +42,7 @@ func TestReadPage(t *testing.T) {
 
 func TestReadPage_PageIDDoesNotExist(t *testing.T) {
 	data := []byte("ABCDEFGH")
+
 	dm, cleanup := newTestDiskManager(t, 1)
 	defer cleanup()
 
@@ -53,6 +55,7 @@ func TestReadPage_PageIDDoesNotExist(t *testing.T) {
 
 func TestWritePage(t *testing.T) {
 	initialData := []byte("ABCDEFGH")
+
 	dm, cleanup := newTestDiskManager(t, 1)
 	defer cleanup()
 
@@ -65,6 +68,7 @@ func TestWritePage(t *testing.T) {
 
 func TestWritePage_PageIDDoesNotExist(t *testing.T) {
 	data := []byte("ABCDEFGH")
+
 	dm, cleanup := newTestDiskManager(t, 1)
 	defer cleanup()
 
@@ -74,6 +78,7 @@ func TestWritePage_PageIDDoesNotExist(t *testing.T) {
 
 func TestWritePage_DataSizeDoesNotMatchPageSize(t *testing.T) {
 	data := []byte("ABCDEFGHI")
+
 	dm, cleanup := newTestDiskManager(t, 1)
 	defer cleanup()
 
