@@ -7,7 +7,7 @@ import (
 
 func (ti *TableIterator) Next() (*RID, shared.Tuple, bool) {
 	for {
-		if ti.currentPageID > ti.th.lastPageID {
+		if ti.currentPageID == slotted_page.NULL_PAGE_ID {
 			return nil, nil, false
 		}
 
@@ -20,8 +20,9 @@ func (ti *TableIterator) Next() (*RID, shared.Tuple, bool) {
 		numSlots := sp.GetNumSlots()
 
 		if ti.currentSlotID >= numSlots {
+			nextPageID := sp.GetNextPageID()
 			ti.th.bpm.UnpinPage(uint32(ti.currentPageID), false)
-			ti.currentPageID++
+			ti.currentPageID = nextPageID
 			ti.currentSlotID = 0
 			continue
 		}

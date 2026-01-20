@@ -4,4 +4,4 @@ Naive & minimalist relational database - Learning purpose
 
 ## Todo
 
-- [ ] Linked pages
+- [x] Linked pages
