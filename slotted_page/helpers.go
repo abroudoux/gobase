@@ -44,4 +44,22 @@ func (sp *SlottedPage) GetData() []byte {
 func InitSlottedPage(data []byte) {
 	binary.LittleEndian.PutUint16(data[NUM_SLOTS_OFFSET:], 0)
 	binary.LittleEndian.PutUint16(data[FREE_SPACE_END_OFFSET:], uint16(shared.PAGE_SIZE))
+	binary.LittleEndian.PutUint16(data[NEXT_PAGE_ID_OFFSET:], NULL_PAGE_ID)
+	binary.LittleEndian.PutUint16(data[PREV_PAGE_ID_OFFSET:], NULL_PAGE_ID)
+}
+
+func (sp *SlottedPage) GetNextPageID() uint16 {
+	return binary.LittleEndian.Uint16(sp.data[NEXT_PAGE_ID_OFFSET:])
+}
+
+func (sp *SlottedPage) SetNextPageID(pageID uint16) {
+	binary.LittleEndian.PutUint16(sp.data[NEXT_PAGE_ID_OFFSET:], pageID)
+}
+
+func (sp *SlottedPage) GetPrevPageID() uint16 {
+	return binary.LittleEndian.Uint16(sp.data[PREV_PAGE_ID_OFFSET:])
+}
+
+func (sp *SlottedPage) SetPrevPageID(pageID uint16) {
+	binary.LittleEndian.PutUint16(sp.data[PREV_PAGE_ID_OFFSET:], pageID)
 }

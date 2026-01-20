@@ -1,6 +1,9 @@
 package table_heap
 
-import "gobase/buffer_pool_manager"
+import (
+	"gobase/buffer_pool_manager"
+	"gobase/slotted_page"
+)
 
 type RID struct {
 	pageID uint16
@@ -32,7 +35,7 @@ func NewTableHeap(bpm *buffer_pool_manager.BufferPoolManager) (*TableHeap, error
 		return nil, err
 	}
 
-	initSlottedPageHeader(frame.Data)
+	slotted_page.InitSlottedPage(frame.Data)
 
 	bpm.UnpinPage(pageID, true)
 

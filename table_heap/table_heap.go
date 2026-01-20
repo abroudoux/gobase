@@ -25,24 +25,29 @@ func (th *TableHeap) Insert(tuple shared.Tuple) (*RID, error) {
 		return NewRID(th.lastPageID, slotID), nil
 	}
 
-	th.bpm.UnpinPage(uint32(th.lastPageID), false)
-
 	newPageID, newFrame, err := th.bpm.NewPage()
 	if err != nil {
+		th.bpm.UnpinPage(uint32(th.lastPageID), false)
 		return nil, err
 	}
 
 	slotted_page.InitSlottedPage(newFrame.Data)
 	newSp := slotted_page.FromData(newFrame.Data)
 
+	sp.SetNextPageID(uint16(newPageID))
+	newSp.SetPrevPageID(th.lastPageID)
+
 	slotID, err := newSp.InsertTuple(tuple)
 	if err != nil {
+		th.bpm.UnpinPage(uint32(th.lastPageID), false)
 		th.bpm.UnpinPage(newPageID, false)
 		return nil, err
 	}
 
+	oldLastPageID := th.lastPageID
 	th.lastPageID = uint16(newPageID)
 
+	th.bpm.UnpinPage(uint32(oldLastPageID), true)
 	th.bpm.UnpinPage(newPageID, true)
 	return NewRID(uint16(newPageID), slotID), nil
 }
