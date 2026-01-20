@@ -35,6 +35,9 @@ func main() {
 	fmt.Println("\n=== TEST TABLE ===")
 	testTable()
 
+	fmt.Println("\n=== TEST LINKED PAGES ===")
+	testLinkedPages()
+
 	// Nettoyage
 	os.Remove("test.db")
 	fmt.Println("\nTous les tests sont terminés!")
@@ -175,7 +178,7 @@ func testIntegration() {
 
 	// Initialiser le header (comme NewSlottedPage mais sur page.Data)
 	// Note: page.Data est déjà alloué par BufferPool, on doit l'initialiser
-	initSlottedPage(page.Data)
+	slotted_page.InitSlottedPage(page.Data)
 
 	// Insérer des tuples
 	sp.InsertTuple(shared.NewTuple("User1,Alice,30"))
@@ -218,15 +221,6 @@ func testIntegration() {
 	fmt.Println("8. Intégration complète réussie!")
 }
 
-// Helper pour initialiser un []byte comme SlottedPage
-func initSlottedPage(data []byte) {
-	// numSlots = 0
-	data[0] = 0
-	data[1] = 0
-	// freeSpaceEnd = 4096 (little endian: 0x1000 = [0x00, 0x10])
-	data[2] = 0x00
-	data[3] = 0x10
-}
 
 func testCatalog() {
 	// 1. Créer un schema
@@ -359,4 +353,65 @@ func testTable() {
 
 	dm.Close()
 	fmt.Println("10. Test Table terminé!")
+}
+
+func testLinkedPages() {
+	os.Remove("test.db")
+
+	dm, err := disk_manager.NewDiskManager("test.db")
+	if err != nil {
+		fmt.Printf("ERREUR DiskManager: %v\n", err)
+		return
+	}
+	bpm := buffer_pool_manager.NewBufferPoolManager(dm, 3)
+
+	heap, err := table_heap.NewTableHeap(bpm)
+	if err != nil {
+		fmt.Printf("ERREUR TableHeap: %v\n", err)
+		return
+	}
+
+	schema := catalog.NewSchema([]catalog.Column{
+		{Name: "id", Type: catalog.TypeInt},
+		{Name: "data", Type: catalog.TypeVarchar, Size: 200},
+	})
+
+	t := table.NewTable("test_linked", schema, heap)
+	fmt.Println("1. Table créée avec schema (id INT, data VARCHAR(200))")
+
+	// Insérer suffisamment de tuples pour remplir plusieurs pages
+	// Chaque tuple fait environ 200+ bytes, une page de 4096 bytes peut en contenir ~15-20
+	numRows := 100
+	fmt.Printf("2. Insertion de %d lignes pour forcer plusieurs pages...\n", numRows)
+
+	for i := 0; i < numRows; i++ {
+		data := fmt.Sprintf("Row-%d-padding-to-make-this-tuple-larger-%s", i, "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX")
+		_, err := t.Insert(i, data)
+		if err != nil {
+			fmt.Printf("ERREUR Insert row %d: %v\n", i, err)
+			return
+		}
+	}
+	fmt.Printf("3. %d lignes insérées avec succès\n", numRows)
+
+	// Scanner et compter
+	scanner := t.Scan()
+	count := 0
+	for {
+		_, ok := scanner.Next()
+		if !ok {
+			break
+		}
+		count++
+	}
+
+	fmt.Printf("4. Scan terminé: %d lignes lues\n", count)
+
+	if count == numRows {
+		fmt.Println("5. SUCCESS: Les pages chaînées fonctionnent correctement!")
+	} else {
+		fmt.Printf("5. ERREUR: Attendu %d lignes, obtenu %d\n", numRows, count)
+	}
+
+	dm.Close()
 }
