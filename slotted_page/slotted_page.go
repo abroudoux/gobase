@@ -1,8 +1,6 @@
 package slotted_page
 
 import (
-	"errors"
-
 	"gobase/shared"
 )
 
@@ -13,7 +11,7 @@ func (sp *SlottedPage) GetFreeSpace() uint16 {
 func (sp *SlottedPage) InsertTuple(tuple shared.Tuple) (slotID uint16, err error) {
 	spaceRequired := len(tuple) + int(SLOT_SIZE)
 	if spaceRequired > int(sp.GetFreeSpace()) {
-		return 0, errors.New("not enough space")
+		return 0, ErrNotEnoughSpace
 	}
 
 	newTupleOffset := sp.getFreeSpaceEnd() - uint16(len(tuple))
@@ -30,12 +28,12 @@ func (sp *SlottedPage) InsertTuple(tuple shared.Tuple) (slotID uint16, err error
 
 func (sp *SlottedPage) GetTuple(slotID uint16) (shared.Tuple, error) {
 	if slotID >= sp.GetNumSlots() {
-		return nil, errors.New("slot didn't exists")
+		return nil, ErrorSlotDidntExists
 	}
 
 	offset, length := sp.getSlot(slotID)
 	if length == 0 {
-		return nil, errors.New("tuple has been deleted")
+		return nil, ErrTupleHasBeenDeleted
 	}
 
 	tuple := make(shared.Tuple, length)
@@ -46,12 +44,12 @@ func (sp *SlottedPage) GetTuple(slotID uint16) (shared.Tuple, error) {
 
 func (sp *SlottedPage) DeleteTuple(slotID uint16) error {
 	if slotID >= sp.GetNumSlots() {
-		return errors.New("slot didn't exists")
+		return ErrorSlotDidntExists
 	}
 
 	offset, length := sp.getSlot(slotID)
 	if length == 0 {
-		return errors.New("slot has already been deleted")
+		return ErrTupleHasBeenDeleted
 	}
 
 	sp.setSlot(slotID, offset, 0)
