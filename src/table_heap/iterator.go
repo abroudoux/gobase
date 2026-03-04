@@ -1,8 +1,8 @@
 package table_heap
 
 import (
-	"gobase/shared"
-	"gobase/slotted_page"
+	"gobase/src/shared"
+	"gobase/src/slotted_page"
 )
 
 func (ti *TableIterator) Next() (*RID, shared.Tuple, bool) {

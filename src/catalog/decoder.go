@@ -3,7 +3,7 @@ package catalog
 import (
 	"encoding/binary"
 
-	"gobase/shared"
+	"gobase/src/shared"
 )
 
 func DecodeTuple(schema *Schema, tuple shared.Tuple) []any {

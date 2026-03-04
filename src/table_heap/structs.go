@@ -1,8 +1,8 @@
 package table_heap
 
 import (
-	"gobase/buffer_pool_manager"
-	"gobase/slotted_page"
+	"gobase/src/buffer_pool_manager"
+	"gobase/src/slotted_page"
 )
 
 type RID struct {

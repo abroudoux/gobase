@@ -1,6 +1,6 @@
 package buffer_pool_manager
 
-import "gobase/disk_manager"
+import "gobase/src/disk_manager"
 
 type Frame struct {
 	PageID   uint32
@@ -10,10 +10,10 @@ type Frame struct {
 }
 
 type BufferPoolManager struct {
-	frames     []*Frame
+	frames    []*Frame
 	pageTable map[uint32]int
-	dm         *disk_manager.DiskManager
-	poolSize   int
+	dm        *disk_manager.DiskManager
+	poolSize  int
 }
 
 func NewFrame(pageID uint32, data []byte) *Frame {
@@ -30,9 +30,9 @@ func NewBufferPoolManager(dm *disk_manager.DiskManager, poolSize int) *BufferPoo
 	pageTable := make(map[uint32]int)
 
 	return &BufferPoolManager{
-		frames:     frames,
+		frames:    frames,
 		pageTable: pageTable,
-		dm:         dm,
-		poolSize:   poolSize,
+		dm:        dm,
+		poolSize:  poolSize,
 	}
 }

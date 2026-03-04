@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 
-	"gobase/shared"
+	"gobase/src/shared"
 )
 
 func EncodeTuple(schema *Schema, values []any) shared.Tuple {

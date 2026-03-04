@@ -1,8 +1,8 @@
 package table
 
 import (
-	"gobase/catalog"
-	"gobase/table_heap"
+	"gobase/src/catalog"
+	"gobase/src/table_heap"
 )
 
 type Table struct {

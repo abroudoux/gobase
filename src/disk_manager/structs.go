@@ -3,7 +3,7 @@ package disk_manager
 import (
 	"os"
 
-	"gobase/shared"
+	"gobase/src/shared"
 )
 
 type DiskManager struct {

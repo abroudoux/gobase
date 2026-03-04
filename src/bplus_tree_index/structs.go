@@ -1,7 +1,7 @@
 package bplus_tree_index
 
 import (
-	"gobase/table_heap"
+	"gobase/src/table_heap"
 )
 
 type Node interface {

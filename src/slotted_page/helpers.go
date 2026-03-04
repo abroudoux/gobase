@@ -3,7 +3,7 @@ package slotted_page
 import (
 	"encoding/binary"
 
-	"gobase/shared"
+	"gobase/src/shared"
 )
 
 func (sp *SlottedPage) GetNumSlots() uint16 {

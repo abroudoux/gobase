@@ -4,13 +4,13 @@ import (
 	"fmt"
 	"os"
 
-	"gobase/buffer_pool_manager"
-	"gobase/catalog"
-	"gobase/disk_manager"
-	"gobase/shared"
-	"gobase/slotted_page"
-	"gobase/table"
-	"gobase/table_heap"
+	"gobase/src/buffer_pool_manager"
+	"gobase/src/catalog"
+	"gobase/src/disk_manager"
+	"gobase/src/shared"
+	"gobase/src/slotted_page"
+	"gobase/src/table"
+	"gobase/src/table_heap"
 )
 
 func main() {
@@ -220,7 +220,6 @@ func testIntegration() {
 
 	fmt.Println("8. Intégration complète réussie!")
 }
-
 
 func testCatalog() {
 	// 1. Créer un schema

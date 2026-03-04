@@ -4,7 +4,7 @@ import (
 	"os"
 	"testing"
 
-	"gobase/disk_manager"
+	"gobase/src/disk_manager"
 
 	"github.com/stretchr/testify/require"
 )

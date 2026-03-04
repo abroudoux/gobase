@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"testing"
 
-	"gobase/shared"
+	"gobase/src/shared"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -45,7 +45,7 @@ func TestInsertTuple_MultipleInserts(t *testing.T) {
 		assert.Equal(t, uint16(i), slotID)
 	}
 	assert.Equal(t, uint16(3), sp.GetNumSlots())
-  }
+}
 
 func TestGetTuple(t *testing.T) {
 	sp := NewSlottedPage()

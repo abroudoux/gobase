@@ -3,7 +3,7 @@ package bplus_tree_index
 import (
 	"slices"
 
-	"gobase/table_heap"
+	"gobase/src/table_heap"
 )
 
 func (in *InternalNode) Search(key uint16) Node {

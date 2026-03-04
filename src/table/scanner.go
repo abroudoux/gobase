@@ -1,6 +1,6 @@
 package table
 
-import "gobase/catalog"
+import "gobase/src/catalog"
 
 func (ts *TableScanner) Next() ([]any, bool) {
 	_, encodedData, ok := ts.iter.Next()

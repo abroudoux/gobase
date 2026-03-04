@@ -3,8 +3,8 @@ package buffer_pool_manager
 import (
 	"testing"
 
-	"gobase/disk_manager"
-	"gobase/shared"
+	"gobase/src/disk_manager"
+	"gobase/src/shared"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -19,7 +19,7 @@ func TestFetchPage_PageAlreadyInBuffer(t *testing.T) {
 		Data:     make([]byte, shared.PAGE_SIZE),
 		Dirty:    false,
 		PinCount: 0,
-  	}
+	}
 	bpm.pageTable[0] = 0
 
 	frame, err := bpm.FetchPage(0)
@@ -37,7 +37,7 @@ func TestFetchPage_LoadFromDisk(t *testing.T) {
 
 	frame, err := bpm.FetchPage(0)
 	require.NoError(t, err)
-	assert.Equal(t, uint32(0),frame.PageID)
+	assert.Equal(t, uint32(0), frame.PageID)
 	assert.Equal(t, 0, bpm.pageTable[0])
 }
 
@@ -103,7 +103,7 @@ func TestFetchPage_BufferPoolFull(t *testing.T) {
 	_, err := bpm.dm.AllocatePage()
 	require.NoError(t, err)
 	_, err = bpm.dm.AllocatePage()
-    require.NoError(t, err)
+	require.NoError(t, err)
 
 	bpm.frames[0] = &Frame{
 		PageID:   0,

@@ -1,7 +1,7 @@
 package slotted_page
 
 import (
-	"gobase/shared"
+	"gobase/src/shared"
 )
 
 func (sp *SlottedPage) GetFreeSpace() uint16 {

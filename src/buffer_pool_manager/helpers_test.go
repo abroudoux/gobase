@@ -3,7 +3,7 @@ package buffer_pool_manager
 import (
 	"testing"
 
-	"gobase/shared"
+	"gobase/src/shared"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
