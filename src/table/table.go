@@ -13,6 +13,10 @@ func (t *Table) Insert(values ...any) (*table_heap.RID, error) {
 		return nil, err
 	}
 
+	if t.Index != nil {
+		t.Index.Insert(uint16(values[t.IndexedColumn].(int)), *rid)
+	}
+
 	return rid, nil
 }
 
@@ -28,6 +32,15 @@ func (t *Table) GetByRID(rid table_heap.RID) ([]any, error) {
 }
 
 func (t *Table) Delete(rid table_heap.RID) error {
+	if t.Index != nil {
+		values, err := t.GetByRID(rid)
+		if err != nil {
+			return err
+		}
+
+		t.Index.Delete(uint16(values[t.IndexedColumn].(int)))
+	}
+
 	return t.Heap.Delete(rid)
 }
 
@@ -36,4 +49,22 @@ func (t *Table) Scan() *TableScanner {
 		schema: t.Schema,
 		iter:   t.Heap.Scan(),
 	}
+}
+
+func (t *Table) GetByKey(key uint16) ([]any, error) {
+	if t.Index == nil {
+		return nil, ErrIndexIsntSet
+	}
+
+	rid, err := t.Index.Search(key)
+	if err != nil {
+		return nil, err
+	}
+
+	tuple, err := t.GetByRID(rid)
+	if err != nil {
+		return nil, err
+	}
+
+	return tuple, nil
 }

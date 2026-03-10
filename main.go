@@ -42,6 +42,9 @@ func main() {
 	fmt.Println("\n=== TEST B+ TREE INDEX ===")
 	testBPlusTreeIndex()
 
+	fmt.Println("\n=== TEST TABLE AVEC INDEX ===")
+	testTableWithIndex()
+
 	// Nettoyage
 	os.Remove("test.db")
 	fmt.Println("\nTous les tests sont terminés!")
@@ -435,6 +438,82 @@ func testBPlusTreeIndex() {
 		}
 	}
 	fmt.Println("10. Toutes les clés supprimées, arbre vidé")
+}
+
+func testTableWithIndex() {
+	os.Remove("test.db")
+
+	dm, err := disk_manager.NewDiskManager("test.db")
+	if err != nil {
+		fmt.Printf("ERREUR DiskManager: %v\n", err)
+		return
+	}
+	bpm := buffer_pool_manager.NewBufferPoolManager(dm, 5)
+	heap, err := table_heap.NewTableHeap(bpm)
+	if err != nil {
+		fmt.Printf("ERREUR TableHeap: %v\n", err)
+		return
+	}
+
+	schema := catalog.NewSchema([]catalog.Column{
+		{Name: "id", Type: catalog.TypeSmallInt},
+		{Name: "name", Type: catalog.TypeVarchar, Size: 50},
+	})
+
+	index := &bplus_tree_index.BPlusTreeIndex{Order: 4}
+	t := table.NewTableWithIndex("users", schema, heap, index, 0)
+	fmt.Println("1. Table 'users' créée avec index sur colonne 'id'")
+
+	rid1, err := t.Insert(1, "Alice")
+	if err != nil {
+		fmt.Printf("ERREUR Insert: %v\n", err)
+		return
+	}
+	fmt.Printf("2. Inséré: (1, 'Alice') → RID(%d, %d)\n", rid1.GetPageID(), rid1.GetSlotID())
+
+	_, err = t.Insert(2, "Bob")
+	if err != nil {
+		fmt.Printf("ERREUR Insert: %v\n", err)
+		return
+	}
+	fmt.Println("3. Inséré: (2, 'Bob')")
+
+	_, err = t.Insert(3, "Charlie")
+	if err != nil {
+		fmt.Printf("ERREUR Insert: %v\n", err)
+		return
+	}
+	fmt.Println("4. Inséré: (3, 'Charlie')")
+
+	// GetByKey sur clé existante
+	row, err := t.GetByKey(2)
+	if err != nil {
+		fmt.Printf("ERREUR GetByKey(2): %v\n", err)
+		return
+	}
+	fmt.Printf("5. GetByKey(2) → id=%v, name=%v\n", row[0], row[1])
+
+	// GetByKey sur clé inexistante
+	_, err = t.GetByKey(99)
+	if err != nil {
+		fmt.Printf("6. GetByKey(99) → %v (attendu)\n", err)
+	}
+
+	// Delete + vérification via GetByKey
+	err = t.Delete(*rid1)
+	if err != nil {
+		fmt.Printf("ERREUR Delete(rid1): %v\n", err)
+		return
+	}
+	fmt.Println("7. Delete(rid1) OK — supprimé Alice (id=1)")
+
+	_, err = t.GetByKey(1)
+	if err != nil {
+		fmt.Printf("8. GetByKey(1) après suppression → %v (attendu)\n", err)
+	}
+
+	dm.Close()
+	fmt.Println("9. Test Table avec index terminé!")
 }
 
 func testLinkedPages() {
