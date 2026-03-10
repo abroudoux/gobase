@@ -1,12 +1,13 @@
 package disk_manager
 
 import (
-	"gobase/shared"
 	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"gobase/src/shared"
 )
 
 func TestNewDiskManager(t *testing.T) {

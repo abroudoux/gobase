@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 
+	"gobase/src/bplus_tree_index"
 	"gobase/src/buffer_pool_manager"
 	"gobase/src/catalog"
 	"gobase/src/disk_manager"
@@ -37,6 +38,9 @@ func main() {
 
 	fmt.Println("\n=== TEST LINKED PAGES ===")
 	testLinkedPages()
+
+	fmt.Println("\n=== TEST B+ TREE INDEX ===")
+	testBPlusTreeIndex()
 
 	// Nettoyage
 	os.Remove("test.db")
@@ -352,6 +356,85 @@ func testTable() {
 
 	dm.Close()
 	fmt.Println("10. Test Table terminé!")
+}
+
+func testBPlusTreeIndex() {
+	bpti := &bplus_tree_index.BPlusTreeIndex{Order: 4}
+	fmt.Println("1. B+ Tree Index créé (order=4)")
+
+	// Insérer des entrées
+	keys := []uint16{10, 20, 5, 15, 30, 25, 3, 7}
+	for i, k := range keys {
+		rid := *table_heap.NewRID(uint16(i), uint16(i))
+		bpti.Insert(k, rid)
+	}
+	fmt.Printf("2. %d entrées insérées: %v\n", len(keys), keys)
+
+	// Recherche d'une clé existante
+	rid, err := bpti.Search(15)
+	if err != nil {
+		fmt.Printf("ERREUR Search(15): %v\n", err)
+		return
+	}
+	fmt.Printf("3. Search(15) → RID(%d, %d)\n", rid.GetPageID(), rid.GetSlotID())
+
+	// Recherche d'une clé inexistante
+	_, err = bpti.Search(99)
+	if err != nil {
+		fmt.Printf("4. Search(99) → %v (attendu)\n", err)
+	}
+
+	// Suppression simple (pas de sous-remplissage)
+	err = bpti.Delete(20)
+	if err != nil {
+		fmt.Printf("ERREUR Delete(20): %v\n", err)
+		return
+	}
+	fmt.Println("5. Delete(20) OK")
+
+	_, err = bpti.Search(20)
+	if err != nil {
+		fmt.Printf("6. Search(20) après suppression → %v (attendu)\n", err)
+	}
+
+	// Suppression provoquant un sous-remplissage (emprunt ou fusion)
+	err = bpti.Delete(3)
+	if err != nil {
+		fmt.Printf("ERREUR Delete(3): %v\n", err)
+		return
+	}
+	fmt.Println("7. Delete(3) OK (sous-remplissage géré)")
+
+	err = bpti.Delete(7)
+	if err != nil {
+		fmt.Printf("ERREUR Delete(7): %v\n", err)
+		return
+	}
+	fmt.Println("8. Delete(7) OK")
+
+	// Vérifier que les clés restantes sont toujours accessibles
+	remaining := []uint16{5, 10, 15, 25, 30}
+	allOk := true
+	for _, k := range remaining {
+		_, err := bpti.Search(k)
+		if err != nil {
+			fmt.Printf("ERREUR Search(%d) après suppressions: %v\n", k, err)
+			allOk = false
+		}
+	}
+	if allOk {
+		fmt.Printf("9. Toutes les clés restantes accessibles: %v\n", remaining)
+	}
+
+	// Suppression de toutes les clés restantes (collapse de la racine)
+	for _, k := range remaining {
+		err := bpti.Delete(k)
+		if err != nil {
+			fmt.Printf("ERREUR Delete(%d): %v\n", k, err)
+			return
+		}
+	}
+	fmt.Println("10. Toutes les clés supprimées, arbre vidé")
 }
 
 func testLinkedPages() {

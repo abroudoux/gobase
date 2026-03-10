@@ -17,7 +17,7 @@ func (in *InternalNode) Search(key uint16) Node {
 		}
 
 		if key > in.Keys[i] && key < in.Keys[i+1] {
-			return in.Childs[i]
+			return in.Childs[i+1]
 		}
 	}
 
@@ -32,8 +32,19 @@ func (ln *LeafNode) Search(key uint16) Node {
 	return ln
 }
 
-func (bpti *BPlusTreeIndex) Search(key uint16) Node {
-	return findNodeRecursively(bpti.Root, key)
+func (bpti *BPlusTreeIndex) Search(key uint16) (table_heap.RID, error) {
+	node := findNodeRecursively(bpti.Root, key)
+	if node == nil {
+		return table_heap.RID{}, ErrKeyNotFound
+	}
+
+	leafNode := node.(*LeafNode)
+	index := slices.Index(leafNode.Keys, key)
+	if index == -1 {
+		return table_heap.RID{}, ErrIndexDidntExists
+	}
+
+	return leafNode.RID[index], nil
 }
 
 func findNodeRecursively(node Node, key uint16) Node {
@@ -42,7 +53,7 @@ func findNodeRecursively(node Node, key uint16) Node {
 		nextNode := n.Search(key)
 		return findNodeRecursively(nextNode, key)
 	case *LeafNode:
-		return n
+		return n.Search(key)
 	default:
 		return nil
 	}
@@ -105,37 +116,90 @@ func (bpti *BPlusTreeIndex) findLeafNodeRecursively(key uint16, nodes *[]*Intern
 	}
 }
 
-func findNodeIndex(keys []uint16, key uint16) (index int) {
-	for i, _ := range keys {
-		if key < keys[i] {
-			return i
+func (bpti *BPlusTreeIndex) Delete(key uint16) error {
+	var nodes []*InternalNode
+	leafNode := bpti.findLeafNodeRecursively(key, &nodes, bpti.Root)
+	if leafNode == nil {
+		return ErrLeafNodeDidntExists
+	}
+
+	index := slices.Index(leafNode.Keys, key)
+	if index == -1 {
+		return ErrIndexDidntExists
+	}
+
+	leafNode.Keys = slices.Delete(leafNode.Keys, index, index+1)
+	leafNode.RID = slices.Delete(leafNode.RID, index, index+1)
+
+	if len(leafNode.Keys) < int(bpti.Order)/2 {
+		if len(nodes) == 0 {
+			return nil
+		}
+
+		parent := nodes[len(nodes)-1]
+		leafNodeIndex := slices.Index[[]Node, Node](parent.Childs, leafNode)
+
+		var leafNodeLeft, leafNodeRight *LeafNode
+
+		if leafNodeIndex != 0 {
+			siblingLeft := parent.Childs[leafNodeIndex-1]
+			leafNodeLeft = siblingLeft.(*LeafNode)
+		}
+		if leafNodeIndex != len(parent.Childs)-1 {
+			siblingRight := parent.Childs[leafNodeIndex+1]
+			leafNodeRight = siblingRight.(*LeafNode)
+		}
+
+		if leafNodeLeft != nil && len(leafNodeLeft.Keys) > int(bpti.Order)/2 {
+			borrowLeafFromLeft(leafNodeLeft, leafNode, parent, leafNodeIndex)
+		} else if leafNodeRight != nil && len(leafNodeRight.Keys) > int(bpti.Order)/2 {
+			borrowLeafFromRight(leafNodeRight, leafNode, parent, leafNodeIndex)
+		} else {
+			mergeLeafNodes(leafNodeLeft, leafNodeRight, leafNode, parent, leafNodeIndex)
+
+			if len(nodes) == 1 && len(parent.Keys) == 0 {
+				bpti.Root = parent.Childs[0]
+				return nil
+			}
+
+			if len(parent.Keys) < int(bpti.Order)/2 {
+				for i := len(nodes) - 2; i >= 0; i-- {
+					currentNode := nodes[i]
+
+					if len(currentNode.Keys) >= int(bpti.Order)/2 {
+						break
+					}
+
+					if i == 0 && len(currentNode.Keys) == 0 {
+						bpti.Root = currentNode.Childs[0]
+						break
+					}
+
+					parent := nodes[i-1]
+					currentNodeIndex := slices.Index[[]Node, Node](parent.Childs, currentNode)
+
+					var internalNodeLeft, internalNodeRight *InternalNode
+
+					if currentNodeIndex != 0 {
+						siblingLeft := parent.Childs[currentNodeIndex-1]
+						internalNodeLeft = siblingLeft.(*InternalNode)
+					}
+					if currentNodeIndex != len(parent.Childs)-1 {
+						siblingRight := parent.Childs[currentNodeIndex+1]
+						internalNodeRight = siblingRight.(*InternalNode)
+					}
+
+					if internalNodeLeft != nil && len(internalNodeLeft.Keys) > int(bpti.Order)/2 {
+						borrowInternalFromLeft(currentNode, internalNodeLeft, parent, currentNodeIndex)
+					} else if internalNodeRight != nil && len(internalNodeRight.Keys) > int(bpti.Order)/2 {
+						borrowInternalFromRight(currentNode, internalNodeRight, parent, currentNodeIndex)
+					} else {
+						mergeInternalNodes(internalNodeLeft, internalNodeRight, currentNode, parent, currentNodeIndex)
+					}
+				}
+			}
 		}
 	}
 
-	return len(keys)
-}
-
-func splitLeafNode(ln *LeafNode) (uint16, *LeafNode) {
-	middleIndex := len(ln.Keys) / 2
-	middleKey := ln.Keys[middleIndex]
-
-	newLeafNode := NewLeafNode(ln.Keys[middleIndex:], ln.RID[middleIndex:])
-
-	ln.Keys = ln.Keys[:middleIndex]
-	ln.RID = ln.RID[:middleIndex]
-	ln.NextLeafNode = newLeafNode
-
-	return middleKey, newLeafNode
-}
-
-func splitInternalNode(parent *InternalNode) (uint16, *InternalNode) {
-	middleIndex := len(parent.Keys) / 2
-	middleKey := parent.Keys[middleIndex]
-
-	newInternalNode := NewInternalNode(parent.Keys[middleIndex+1:], parent.Childs[middleIndex+1:])
-
-	parent.Keys = parent.Keys[:middleIndex]
-	parent.Childs = parent.Childs[:middleIndex+1]
-
-	return middleKey, newInternalNode
+	return nil
 }
