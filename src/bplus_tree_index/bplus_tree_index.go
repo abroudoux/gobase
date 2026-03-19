@@ -1,9 +1,8 @@
 package bplus_tree_index
 
 import (
+	"gobase/src/shared"
 	"slices"
-
-	"gobase/src/table_heap"
 )
 
 func (in *InternalNode) Search(key uint16) Node {
@@ -32,16 +31,16 @@ func (ln *LeafNode) Search(key uint16) Node {
 	return ln
 }
 
-func (bpti *BPlusTreeIndex) Search(key uint16) (table_heap.RID, error) {
+func (bpti *BPlusTreeIndex) Search(key uint16) (shared.RID, error) {
 	node := findNodeRecursively(bpti.Root, key)
 	if node == nil {
-		return table_heap.RID{}, ErrKeyNotFound
+		return shared.RID{}, ErrKeyNotFound
 	}
 
 	leafNode := node.(*LeafNode)
 	index := slices.Index(leafNode.Keys, key)
 	if index == -1 {
-		return table_heap.RID{}, ErrIndexDidntExists
+		return shared.RID{}, ErrIndexDidntExists
 	}
 
 	return leafNode.RID[index], nil
@@ -59,9 +58,9 @@ func findNodeRecursively(node Node, key uint16) Node {
 	}
 }
 
-func (bpti *BPlusTreeIndex) Insert(key uint16, RID table_heap.RID) {
+func (bpti *BPlusTreeIndex) Insert(key uint16, RID shared.RID) {
 	if bpti.Root == nil {
-		bpti.Root = NewLeafNode([]uint16{key}, []table_heap.RID{RID})
+		bpti.Root = NewLeafNode([]uint16{key}, []shared.RID{RID})
 		return
 	}
 

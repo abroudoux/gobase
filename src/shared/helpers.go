@@ -1,10 +1,9 @@
-package table_heap
+package shared
 
 func (r *RID) GetPageID() uint16 {
-	return r.pageID
+	return r.PageID
 }
 
 func (r *RID) GetSlotID() uint16 {
-	return r.slotID
+	return r.SlotID
 }
-

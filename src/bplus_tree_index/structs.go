@@ -1,8 +1,6 @@
 package bplus_tree_index
 
-import (
-	"gobase/src/table_heap"
-)
+import "gobase/src/shared"
 
 type Node interface {
 	Search(key uint16) Node
@@ -15,7 +13,7 @@ type InternalNode struct {
 
 type LeafNode struct {
 	Keys         []uint16
-	RID          []table_heap.RID
+	RID          []shared.RID
 	NextLeafNode *LeafNode
 }
 
@@ -31,7 +29,7 @@ func NewInternalNode(keys []uint16, childs []Node) *InternalNode {
 	}
 }
 
-func NewLeafNode(keys []uint16, RIDs []table_heap.RID) *LeafNode {
+func NewLeafNode(keys []uint16, RIDs []shared.RID) *LeafNode {
 	return &LeafNode{
 		Keys:         keys,
 		RID:          RIDs,

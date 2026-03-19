@@ -5,7 +5,7 @@ import (
 	"gobase/src/slotted_page"
 )
 
-func (ti *TableIterator) Next() (*RID, shared.Tuple, bool) {
+func (ti *TableIterator) Next() (*shared.RID, shared.Tuple, bool) {
 	for {
 		if ti.currentPageID == slotted_page.NULL_PAGE_ID {
 			return nil, nil, false
@@ -34,7 +34,7 @@ func (ti *TableIterator) Next() (*RID, shared.Tuple, bool) {
 			continue
 		}
 
-		rid := NewRID(ti.currentPageID, ti.currentSlotID)
+		rid := shared.NewRID(ti.currentPageID, ti.currentSlotID)
 		ti.currentSlotID++
 		ti.th.bpm.UnpinPage(uint32(ti.currentPageID), false)
 

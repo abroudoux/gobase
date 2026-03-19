@@ -5,11 +5,6 @@ import (
 	"gobase/src/slotted_page"
 )
 
-type RID struct {
-	pageID uint16
-	slotID uint16
-}
-
 type TableHeap struct {
 	bpm         *buffer_pool_manager.BufferPoolManager
 	firstPageID uint16
@@ -20,13 +15,6 @@ type TableIterator struct {
 	th            *TableHeap
 	currentPageID uint16
 	currentSlotID uint16
-}
-
-func NewRID(pageID, slotID uint16) *RID {
-	return &RID{
-		pageID: pageID,
-		slotID: slotID,
-	}
 }
 
 func NewTableHeap(bpm *buffer_pool_manager.BufferPoolManager) (*TableHeap, error) {

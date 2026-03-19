@@ -368,7 +368,7 @@ func testBPlusTreeIndex() {
 	// Insérer des entrées
 	keys := []uint16{10, 20, 5, 15, 30, 25, 3, 7}
 	for i, k := range keys {
-		rid := *table_heap.NewRID(uint16(i), uint16(i))
+		rid := *shared.NewRID(uint16(i), uint16(i))
 		bpti.Insert(k, rid)
 	}
 	fmt.Printf("2. %d entrées insérées: %v\n", len(keys), keys)

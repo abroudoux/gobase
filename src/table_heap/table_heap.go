@@ -5,7 +5,7 @@ import (
 	"gobase/src/slotted_page"
 )
 
-func (th *TableHeap) Insert(tuple shared.Tuple) (*RID, error) {
+func (th *TableHeap) Insert(tuple shared.Tuple) (*shared.RID, error) {
 	lastFrame, err := th.bpm.FetchPage(uint32(th.lastPageID))
 	if err != nil {
 		return nil, err
@@ -22,7 +22,7 @@ func (th *TableHeap) Insert(tuple shared.Tuple) (*RID, error) {
 		}
 
 		th.bpm.UnpinPage(uint32(th.lastPageID), true)
-		return NewRID(th.lastPageID, slotID), nil
+		return shared.NewRID(th.lastPageID, slotID), nil
 	}
 
 	newPageID, newFrame, err := th.bpm.NewPage()
@@ -49,41 +49,41 @@ func (th *TableHeap) Insert(tuple shared.Tuple) (*RID, error) {
 
 	th.bpm.UnpinPage(uint32(oldLastPageID), true)
 	th.bpm.UnpinPage(newPageID, true)
-	return NewRID(uint16(newPageID), slotID), nil
+	return shared.NewRID(uint16(newPageID), slotID), nil
 }
 
-func (th *TableHeap) Get(rid RID) (shared.Tuple, error) {
-	frame, err := th.bpm.FetchPage(uint32(rid.pageID))
+func (th *TableHeap) Get(rid shared.RID) (shared.Tuple, error) {
+	frame, err := th.bpm.FetchPage(uint32(rid.PageID))
 	if err != nil {
 		return nil, err
 	}
 
 	sp := slotted_page.FromData(frame.Data)
 
-	tuple, err := sp.GetTuple(rid.slotID)
+	tuple, err := sp.GetTuple(rid.SlotID)
 	if err != nil {
-		th.bpm.UnpinPage(uint32(rid.pageID), false)
+		th.bpm.UnpinPage(uint32(rid.PageID), false)
 		return nil, err
 	}
 
-	th.bpm.UnpinPage(uint32(rid.pageID), false)
+	th.bpm.UnpinPage(uint32(rid.PageID), false)
 	return tuple, nil
 }
 
-func (th *TableHeap) Delete(rid RID) error {
-	frame, err := th.bpm.FetchPage(uint32(rid.pageID))
+func (th *TableHeap) Delete(rid shared.RID) error {
+	frame, err := th.bpm.FetchPage(uint32(rid.PageID))
 	if err != nil {
 		return err
 	}
 
 	sp := slotted_page.FromData(frame.Data)
-	err = sp.DeleteTuple(rid.slotID)
+	err = sp.DeleteTuple(rid.SlotID)
 	if err != nil {
-		th.bpm.UnpinPage(uint32(rid.pageID), false)
+		th.bpm.UnpinPage(uint32(rid.PageID), false)
 		return err
 	}
 
-	th.bpm.UnpinPage(uint32(rid.pageID), true)
+	th.bpm.UnpinPage(uint32(rid.PageID), true)
 	return nil
 }
 

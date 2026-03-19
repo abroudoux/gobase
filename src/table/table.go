@@ -2,10 +2,10 @@ package table
 
 import (
 	"gobase/src/catalog"
-	"gobase/src/table_heap"
+	"gobase/src/shared"
 )
 
-func (t *Table) Insert(values ...any) (*table_heap.RID, error) {
+func (t *Table) Insert(values ...any) (*shared.RID, error) {
 	encodedData := catalog.EncodeTuple(t.Schema, values)
 
 	rid, err := t.Heap.Insert(encodedData)
@@ -20,7 +20,7 @@ func (t *Table) Insert(values ...any) (*table_heap.RID, error) {
 	return rid, nil
 }
 
-func (t *Table) GetByRID(rid table_heap.RID) ([]any, error) {
+func (t *Table) GetByRID(rid shared.RID) ([]any, error) {
 	data, err := t.Heap.Get(rid)
 	if err != nil {
 		return nil, err
@@ -31,7 +31,7 @@ func (t *Table) GetByRID(rid table_heap.RID) ([]any, error) {
 	return dataDecoded, nil
 }
 
-func (t *Table) Delete(rid table_heap.RID) error {
+func (t *Table) Delete(rid shared.RID) error {
 	if t.Index != nil {
 		values, err := t.GetByRID(rid)
 		if err != nil {
